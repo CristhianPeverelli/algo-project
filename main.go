@@ -1,5 +1,12 @@
 package main
 
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
 type Mattoncino struct {
 	Alpha string // bordo α
 	Beta  string // bordo β
@@ -7,18 +14,65 @@ type Mattoncino struct {
 }
 
 type Fila struct {
-	Mattoncini    []Mattoncino
+	Mattoncini    []*Mattoncino
 	BordiSinistri map[string]string
 	BordiDestri   map[string]string
 }
 
 type Scatola struct {
-	Mattoncini map[string]Mattoncino
+	Mattoncini map[string]*Mattoncino
 }
 
 type Gioco struct {
 	Scatola      Scatola
-	FileDisposte []Fila
+	FileDisposte []*Fila
+}
+
+func main() {
+	scatola := Scatola{
+		Mattoncini: make(map[string]*Mattoncino),
+	}
+	gioco := &Gioco{
+		Scatola:      scatola,
+		FileDisposte: make([]*Fila, 0),
+	}
+
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		linea := scanner.Text()
+		elementi := strings.Fields(linea)
+
+		switch elementi[0] {
+		case "m":
+			alpha := elementi[1]
+			beta := elementi[2]
+			sigma := elementi[3]
+			inserisciMattoncino(gioco, alpha, beta, sigma)
+			break
+		case "s":
+			sigma := elementi[1]
+			stampaMattoncino(gioco, sigma)
+			break
+		case "d":
+			break
+		case "S":
+			break
+		case "e":
+			break
+		case "f":
+			break
+		case "M":
+			break
+		case "i":
+			break
+		case "c":
+			break
+		case "q":
+			return
+		}
+
+	}
+
 }
 
 /*
@@ -26,8 +80,11 @@ inserisciMattoncino (α, β, σ)
 Se esiste già un mattoncino di nome σ oppure se α `e uguale a β, non compie alcuna operazione.
 Altrimenti, inserisce nella scatola il mattoncino definito dalla tripla (α, β, σ).
 */
-func inserisciMattoncino() {
-
+func inserisciMattoncino(g *Gioco, alpha, beta, sigma string) {
+	if alpha != beta && g.Scatola.Mattoncini[sigma] == nil {
+		mattoncino := &Mattoncino{Alpha: alpha, Beta: beta, Sigma: sigma}
+		g.Scatola.Mattoncini[mattoncino.Sigma] = mattoncino
+	}
 }
 
 /*
@@ -35,8 +92,11 @@ stampaMattoncino (σ)
 Se non esiste alcun mattoncino di nome σ non compie alcuna operazione. Altrimenti, stampa il
 mattoncino con nome σ, secondo il formato specificato nell’apposita sezione.
 */
-func stampaMattoncino() {
-
+func stampaMattoncino(g *Gioco, sigma string) {
+	if g.Scatola.Mattoncini[sigma] != nil {
+		m := g.Scatola.Mattoncini[sigma]
+		fmt.Printf("%s: %s, %s\n", m.Sigma, m.Alpha, m.Beta)
+	}
 }
 
 /*
