@@ -13,28 +13,28 @@ type Mattoncino struct {
 	Sigma string // nome
 }
 
-type Fila struct {
+type fila struct {
 	Mattoncini    []*Mattoncino
 	BordiSinistri map[string]string
 	BordiDestri   map[string]string
 }
 
-type Scatola struct {
+type scatola struct {
 	Mattoncini map[string]*Mattoncino
 }
 
-type Gioco struct {
-	Scatola      Scatola
-	FileDisposte []*Fila
+type gioco struct {
+	Scatola      scatola
+	FileDisposte []*fila
 }
 
 func main() {
-	scatola := Scatola{
+	scatola := scatola{
 		Mattoncini: make(map[string]*Mattoncino),
 	}
-	gioco := &Gioco{
+	gioco := gioco{
 		Scatola:      scatola,
-		FileDisposte: make([]*Fila, 0),
+		FileDisposte: make([]*fila, 0),
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -54,6 +54,7 @@ func main() {
 			stampaMattoncino(gioco, sigma)
 			break
 		case "d":
+			disponiFila(gioco, linea[2:])
 			break
 		case "S":
 			break
@@ -80,7 +81,7 @@ inserisciMattoncino (α, β, σ)
 Se esiste già un mattoncino di nome σ oppure se α `e uguale a β, non compie alcuna operazione.
 Altrimenti, inserisce nella scatola il mattoncino definito dalla tripla (α, β, σ).
 */
-func inserisciMattoncino(g *Gioco, alpha, beta, sigma string) {
+func inserisciMattoncino(g gioco, alpha, beta, sigma string) {
 	if alpha != beta && g.Scatola.Mattoncini[sigma] == nil {
 		mattoncino := &Mattoncino{Alpha: alpha, Beta: beta, Sigma: sigma}
 		g.Scatola.Mattoncini[mattoncino.Sigma] = mattoncino
@@ -92,7 +93,7 @@ stampaMattoncino (σ)
 Se non esiste alcun mattoncino di nome σ non compie alcuna operazione. Altrimenti, stampa il
 mattoncino con nome σ, secondo il formato specificato nell’apposita sezione.
 */
-func stampaMattoncino(g *Gioco, sigma string) {
+func stampaMattoncino(g gioco, sigma string) {
 	if g.Scatola.Mattoncini[sigma] != nil {
 		m := g.Scatola.Mattoncini[sigma]
 		fmt.Printf("%s: %s, %s\n", m.Sigma, m.Alpha, m.Beta)
@@ -105,7 +106,7 @@ dove ± indica uno dei due simboli + o −. Verifica se nella scatola ci sono i 
 σ1, σ2, . . . , σn e se la sequenza di mattoncini ±σ1, ±σ2, . . . , ±σn costituisce una fila; in questo caso,
 toglie dalla scatola i mattoncini che la comp
 */
-func disponiFila() {
+func disponiFila(g gioco, listaNomi string) {
 
 }
 
