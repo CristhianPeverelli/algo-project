@@ -58,6 +58,7 @@ func main() {
 			disponiFila(gioco, linea[2:])
 			break
 		case "S":
+			stampaFila(gioco, linea[2:])
 			break
 		case "e":
 			break
@@ -101,6 +102,13 @@ func stampaMattoncino(g gioco, sigma string) {
 	}
 }
 
+/*
+disponiFila (±σ1, ±σ2, . . . , ±σn)
+dove ± indica uno dei due simboli + o −. Verifica se nella scatola ci sono i mattoncini di nome
+σ1, σ2, . . . , σn e se la sequenza di mattoncini ±σ1, ±σ2, . . . , ±σn costituisce una fila; in questo caso,
+toglie dalla scatola i mattoncini che la comp
+*/
+
 func inserisciMattoncinoInFila(f *fila, m *mattoncino, standard bool) {
 	f.Mattoncini = append(f.Mattoncini, m)
 	if standard {
@@ -137,12 +145,6 @@ func compatibili(m1, m2 *mattoncino, s1, s2 byte) bool {
 	return true
 }
 
-/*
-disponiFila (±σ1, ±σ2, . . . , ±σn)
-dove ± indica uno dei due simboli + o −. Verifica se nella scatola ci sono i mattoncini di nome
-σ1, σ2, . . . , σn e se la sequenza di mattoncini ±σ1, ±σ2, . . . , ±σn costituisce una fila; in questo caso,
-toglie dalla scatola i mattoncini che la comp
-*/
 func disponiFila(g gioco, listaNomi string) {
 
 	nomi := strings.Fields(listaNomi)
@@ -159,7 +161,6 @@ func disponiFila(g gioco, listaNomi string) {
 	}
 
 	mattonciniPresi := make(map[string]bool)
-	fmt.Println(nomi)
 	for i := 0; i < len(nomi)-1; i++ {
 		var mattoncino1 *mattoncino
 		var mattoncino2 *mattoncino
@@ -195,7 +196,6 @@ func disponiFila(g gioco, listaNomi string) {
 	for mat := range mattonciniPresi {
 		delete(g.Scatola.Mattoncini, mat)
 	}
-	fmt.Println("FILA: ", fila)
 	*g.FileDisposte = append(*g.FileDisposte, *fila)
 }
 
@@ -205,8 +205,25 @@ Se non esiste alcun mattoncino di nome σ, oppure se il mattoncino di nome σ no
 ad alcuna fila sul tavolo da gioco, non compie alcuna operazione. Altrimenti, stampa la fila cui
 appartiene il mattoncino con nome σ, secondo il formato specificato nell’apposita sezione.
 */
-func stampaFila() {
 
+func contiene(f fila, sigma string) bool {
+	if f.BordiDestri[sigma] == "" {
+		return false
+	}
+	return true
+}
+
+func stampaFila(g gioco, sigma string) {
+	for _, f := range *g.FileDisposte {
+		if contiene(f, sigma) {
+			fmt.Println("(")
+			for _, elem := range f.Mattoncini {
+				fmt.Printf("%s: %s, %s\n", elem.Sigma, elem.Alpha, elem.Beta)
+			}
+			fmt.Println(")")
+			return
+		}
+	}
 }
 
 /*
