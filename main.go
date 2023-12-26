@@ -7,37 +7,38 @@ import (
 	"strings"
 )
 
-type Mattoncino struct {
+type mattoncino struct {
 	Alpha string // bordo α
 	Beta  string // bordo β
 	Sigma string // nome
 }
 
 type fila struct {
-	Mattoncini    []*Mattoncino
+	Mattoncini    []*mattoncino
 	BordiSinistri map[string]string
 	BordiDestri   map[string]string
 }
 
 type scatola struct {
-	Mattoncini map[string]*Mattoncino
+	Mattoncini map[string]*mattoncino
 }
 
 type gioco struct {
 	Scatola      scatola
-	FileDisposte []*fila
+	FileDisposte *[]fila
 }
 
 func main() {
 	scatola := scatola{
-		Mattoncini: make(map[string]*Mattoncino),
+		Mattoncini: make(map[string]*mattoncino),
 	}
 	gioco := gioco{
 		Scatola:      scatola,
-		FileDisposte: make([]*fila, 0),
+		FileDisposte: &[]fila{},
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Println("Inserisci pure: ") //TODO: da rimuovere
 	for scanner.Scan() {
 		linea := scanner.Text()
 		elementi := strings.Fields(linea)
@@ -83,7 +84,7 @@ Altrimenti, inserisce nella scatola il mattoncino definito dalla tripla (α, β,
 */
 func inserisciMattoncino(g gioco, alpha, beta, sigma string) {
 	if alpha != beta && g.Scatola.Mattoncini[sigma] == nil {
-		mattoncino := &Mattoncino{Alpha: alpha, Beta: beta, Sigma: sigma}
+		mattoncino := &mattoncino{Alpha: alpha, Beta: beta, Sigma: sigma}
 		g.Scatola.Mattoncini[mattoncino.Sigma] = mattoncino
 	}
 }
@@ -100,6 +101,42 @@ func stampaMattoncino(g gioco, sigma string) {
 	}
 }
 
+func inserisciMattoncinoInFila(f *fila, m *mattoncino, standard bool) {
+	f.Mattoncini = append(f.Mattoncini, m)
+	if standard {
+		f.BordiSinistri[m.Sigma] = m.Alpha
+		f.BordiDestri[m.Sigma] = m.Beta
+	} else {
+		f.BordiSinistri[m.Sigma] = m.Beta
+		f.BordiDestri[m.Sigma] = m.Alpha
+	}
+}
+
+func compatibili(m1, m2 *mattoncino, s1, s2 byte) bool {
+	if s1 == '+' {
+		if s2 == '+' {
+			if m1.Beta != m2.Alpha {
+				return false
+			}
+		} else {
+			if m1.Beta != m2.Beta {
+				return false
+			}
+		}
+	} else {
+		if s2 == '+' {
+			if m1.Alpha != m2.Alpha {
+				return false
+			}
+		} else {
+			if m1.Alpha != m2.Beta {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 /*
 disponiFila (±σ1, ±σ2, . . . , ±σn)
 dove ± indica uno dei due simboli + o −. Verifica se nella scatola ci sono i mattoncini di nome
@@ -108,6 +145,58 @@ toglie dalla scatola i mattoncini che la comp
 */
 func disponiFila(g gioco, listaNomi string) {
 
+	nomi := strings.Fields(listaNomi)
+	if len(nomi) == 0 {
+		return
+	}
+
+	fila := &fila{Mattoncini: make([]*mattoncino, 0), BordiSinistri: make(map[string]string), BordiDestri: make(map[string]string)}
+	if len(nomi) == 1 {
+		mattoncino := g.Scatola.Mattoncini[nomi[0][1:]]
+		inserisciMattoncinoInFila(fila, mattoncino, nomi[0][0] == '+')
+		*g.FileDisposte = append(*g.FileDisposte, *fila)
+		return
+	}
+
+	mattonciniPresi := make(map[string]bool)
+	fmt.Println(nomi)
+	for i := 0; i < len(nomi)-1; i++ {
+		var mattoncino1 *mattoncino
+		var mattoncino2 *mattoncino
+		if mattonciniPresi[nomi[i][1:]] == false {
+			mattoncino1 = g.Scatola.Mattoncini[nomi[i][1:]]
+			mattonciniPresi[mattoncino1.Sigma] = true
+		}
+		if mattoncino1 == nil {
+			return
+		}
+		mattonciniPresi[mattoncino1.Sigma] = true
+		if mattonciniPresi[nomi[i+1][1:]] == false {
+			mattoncino2 = g.Scatola.Mattoncini[nomi[i+1][1:]]
+		}
+		if mattoncino2 == nil {
+			return
+		}
+
+		segno1 := nomi[i][0]
+		segno2 := nomi[i+1][0]
+		if !compatibili(mattoncino1, mattoncino2, segno1, segno2) {
+			return
+		}
+		inserisciMattoncinoInFila(fila, mattoncino1, nomi[i][0] == '+')
+	}
+	var m *mattoncino
+	if mattonciniPresi[nomi[len(nomi)-1][1:]] == false {
+		m = g.Scatola.Mattoncini[nomi[len(nomi)-1][1:]]
+		mattonciniPresi[m.Sigma] = true
+	}
+	inserisciMattoncinoInFila(fila, m, nomi[len(nomi)-1][0] == '+')
+
+	for mat := range mattonciniPresi {
+		delete(g.Scatola.Mattoncini, mat)
+	}
+	fmt.Println("FILA: ", fila)
+	*g.FileDisposte = append(*g.FileDisposte, *fila)
 }
 
 /*
