@@ -29,6 +29,14 @@ type gioco struct {
 }
 
 func main() {
+	filePath := "C:\\Users\\cpeverelli\\Documents\\GitHub\\algo-project\\input1.txt"
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+
 	scatola := scatola{
 		Mattoncini: make(map[string]*mattoncino),
 	}
@@ -37,10 +45,11 @@ func main() {
 		FileDisposte: &[]fila{},
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Println("Inserisci pure: ") //TODO: da rimuovere
+	//scanner := bufio.NewScanner(os.Stdin)
+	fmt.Println("Start: ") //TODO: da rimuovere
 	for scanner.Scan() {
 		linea := scanner.Text()
+		fmt.Println(linea)
 		elementi := strings.Fields(linea)
 
 		switch elementi[0] {
@@ -51,8 +60,7 @@ func main() {
 			inserisciMattoncino(gioco, alpha, beta, sigma)
 			break
 		case "s":
-			sigma := elementi[1]
-			stampaMattoncino(gioco, sigma)
+			stampaMattoncino(gioco, linea[2:])
 			break
 		case "d":
 			disponiFila(gioco, linea[2:])
@@ -61,16 +69,20 @@ func main() {
 			stampaFila(gioco, linea[2:])
 			break
 		case "e":
+			eliminaFila(gioco, linea[2:])
 			break
 		case "f":
 			break
 		case "M":
 			break
 		case "i":
+			fmt.Println("Cerco:", linea[2:])
+			indiceCacofonia(gioco, linea[2:])
 			break
 		case "c":
 			break
 		case "q":
+			fmt.Println("Terminato")
 			return
 		}
 
@@ -108,7 +120,6 @@ dove ± indica uno dei due simboli + o −. Verifica se nella scatola ci sono i 
 σ1, σ2, . . . , σn e se la sequenza di mattoncini ±σ1, ±σ2, . . . , ±σn costituisce una fila; in questo caso,
 toglie dalla scatola i mattoncini che la comp
 */
-
 func inserisciMattoncinoInFila(f *fila, m *mattoncino, standard bool) {
 	f.Mattoncini = append(f.Mattoncini, m)
 	if standard {
@@ -164,7 +175,7 @@ func disponiFila(g gioco, listaNomi string) {
 	for i := 0; i < len(nomi)-1; i++ {
 		var mattoncino1 *mattoncino
 		var mattoncino2 *mattoncino
-		if mattonciniPresi[nomi[i][1:]] == false {
+		if !mattonciniPresi[nomi[i][1:]] {
 			mattoncino1 = g.Scatola.Mattoncini[nomi[i][1:]]
 			mattonciniPresi[mattoncino1.Sigma] = true
 		}
@@ -172,7 +183,7 @@ func disponiFila(g gioco, listaNomi string) {
 			return
 		}
 		mattonciniPresi[mattoncino1.Sigma] = true
-		if mattonciniPresi[nomi[i+1][1:]] == false {
+		if !mattonciniPresi[nomi[i+1][1:]] {
 			mattoncino2 = g.Scatola.Mattoncini[nomi[i+1][1:]]
 		}
 		if mattoncino2 == nil {
@@ -187,7 +198,7 @@ func disponiFila(g gioco, listaNomi string) {
 		inserisciMattoncinoInFila(fila, mattoncino1, nomi[i][0] == '+')
 	}
 	var m *mattoncino
-	if mattonciniPresi[nomi[len(nomi)-1][1:]] == false {
+	if !mattonciniPresi[nomi[len(nomi)-1][1:]] {
 		m = g.Scatola.Mattoncini[nomi[len(nomi)-1][1:]]
 		mattonciniPresi[m.Sigma] = true
 	}
@@ -207,10 +218,7 @@ appartiene il mattoncino con nome σ, secondo il formato specificato nell’appo
 */
 
 func contiene(f fila, sigma string) bool {
-	if f.BordiDestri[sigma] == "" {
-		return false
-	}
-	return true
+	return f.BordiDestri[sigma] != ""
 }
 
 func stampaFila(g gioco, sigma string) {
@@ -226,6 +234,13 @@ func stampaFila(g gioco, sigma string) {
 	}
 }
 
+func (f *fila) getNome() (nome string) {
+	for _, m := range f.Mattoncini {
+		nome += m.Sigma
+	}
+	return nome
+}
+
 /*
 eliminaFila (σ)
 Se non esiste alcun mattoncino di nome σ, oppure se il mattoncino di nome σ non appartiene ad
@@ -233,8 +248,30 @@ alcuna fila sul tavolo da gioco, non compie alcuna operazione. Altrimenti, sia F
 il mattoncino di nome σ. La fila F `e rimossa dal tavolo e tutti i mattoncini che la compongono
 sono rimessi nella scatola
 */
-func eliminaFila() {
+func inserisciInScatola(g gioco, f fila) {
+	for _, m := range f.Mattoncini {
+		g.Scatola.Mattoncini[m.Sigma] = m
+	}
+}
 
+func eliminaFila(g gioco, sigma string) {
+	for i, f := range *g.FileDisposte {
+		if contiene(f, sigma) {
+			inserisciInScatola(g, f)
+			if i == 0 {
+				if len(*g.FileDisposte) > 1 {
+					*g.FileDisposte = (*g.FileDisposte)[1:]
+				} else {
+					*g.FileDisposte = nil
+				}
+			} else if i == len(*g.FileDisposte)-1 {
+				*g.FileDisposte = (*g.FileDisposte)[:i]
+			} else {
+				*g.FileDisposte = append((*g.FileDisposte)[:i], (*g.FileDisposte)[i+1:]...)
+			}
+			break
+		}
+	}
 }
 
 /*
@@ -262,8 +299,63 @@ Se non esiste alcun mattoncino di nome σ oppure se il mattoncino di nome σ non
 alcuna fila, non compie alcuna operazione.
 Altrimenti stampa l’indice di cacofonia della fila cui appartiene il mattoncino di nome σ.
 */
-func indiceCacofonia() {
+func calcolaSottostringaMassimaComune(s1, s2 string) string {
+	len1 := len(s1)
+	len2 := len(s2)
+	matrice := make([][]int, len1+1)
+	for i := range matrice {
+		matrice[i] = make([]int, len2+1)
+	}
+	for i := 1; i <= len1; i++ {
+		for j := 1; j <= len2; j++ {
+			if s1[i-1] == s2[j-1] {
+				matrice[i][j] = matrice[i-1][j-1] + 1
+			} else {
+				matrice[i][j] = max(matrice[i-1][j], matrice[i][j-1])
+			}
+		}
+	}
+	var result string
+	i, j := len1, len2
+	for i > 0 && j > 0 {
+		if s1[i-1] == s2[j-1] {
+			result = string(s1[i-1]) + result
+			i--
+			j--
+		} else if matrice[i-1][j] > matrice[i][j-1] {
+			i--
+		} else {
+			j--
+		}
+	}
+	return result
+}
 
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func indiceCacofonia(g gioco, sigma string) {
+	for _, f := range *g.FileDisposte {
+		if contiene(f, sigma) {
+			fmt.Println(f)
+			fmt.Println(sigma)
+			cacofonia := 0
+			for i := 0; i < len(f.Mattoncini)-1; i++ {
+				mattoncino1 := f.Mattoncini[i]
+				mattoncino2 := f.Mattoncini[i+1]
+				fmt.Println("Controllo ", mattoncino1.Sigma, mattoncino2.Sigma)
+				strMassimaComune := calcolaSottostringaMassimaComune(mattoncino1.Sigma, mattoncino2.Sigma)
+				cacofonia += len(strMassimaComune)
+			}
+
+			fmt.Println("Indice di cacofonia: ", cacofonia)
+			return
+		}
+	}
 }
 
 /*
