@@ -14,9 +14,10 @@ type mattoncino struct {
 }
 
 type fila struct {
-	Mattoncini    []*mattoncino
-	BordiSinistri map[string]string
-	BordiDestri   map[string]string
+	Mattoncini        []*mattoncino
+	BordiSinistri     map[string]string
+	BordiDestri       map[string]string
+	SimboliMattoncini map[string]byte
 }
 
 type scatola struct {
@@ -44,14 +45,14 @@ func main() {
 		Scatola:      scatola,
 		FileDisposte: &[]fila{},
 	}
-
 	//scanner := bufio.NewScanner(os.Stdin)
-	fmt.Println("Start: ") //TODO: da rimuovere
+	input := make([]string, 0)
 	for scanner.Scan() {
-		linea := scanner.Text()
-		fmt.Println(linea)
+		input = append(input, scanner.Text())
+	}
+	fmt.Println("Start: ") //TODO: da rimuovere
+	for _, linea := range input {
 		elementi := strings.Fields(linea)
-
 		switch elementi[0] {
 		case "m":
 			alpha := elementi[1]
@@ -72,8 +73,14 @@ func main() {
 			eliminaFila(gioco, linea[2:])
 			break
 		case "f":
+			alpha := elementi[1]
+			beta := elementi[2]
+			disponiFilaMinima(gioco.Scatola.Mattoncini, alpha, beta)
 			break
 		case "M":
+			sigma := elementi[1]
+			tau := elementi[2]
+			sottostringaMassima(sigma, tau)
 			break
 		case "i":
 			fmt.Println("Cerco:", linea[2:])
@@ -82,7 +89,7 @@ func main() {
 		case "c":
 			break
 		case "q":
-			fmt.Println("Terminato")
+			fmt.Println(":End")
 			return
 		}
 
@@ -122,12 +129,14 @@ toglie dalla scatola i mattoncini che la comp
 */
 func inserisciMattoncinoInFila(f *fila, m *mattoncino, standard bool) {
 	f.Mattoncini = append(f.Mattoncini, m)
-	if standard {
+	if standard { //Simbolo +
 		f.BordiSinistri[m.Sigma] = m.Alpha
 		f.BordiDestri[m.Sigma] = m.Beta
-	} else {
+		f.SimboliMattoncini[m.Sigma] = '+'
+	} else { //Simbolo -
 		f.BordiSinistri[m.Sigma] = m.Beta
 		f.BordiDestri[m.Sigma] = m.Alpha
+		f.SimboliMattoncini[m.Sigma] = '-'
 	}
 }
 
@@ -163,7 +172,7 @@ func disponiFila(g gioco, listaNomi string) {
 		return
 	}
 
-	fila := &fila{Mattoncini: make([]*mattoncino, 0), BordiSinistri: make(map[string]string), BordiDestri: make(map[string]string)}
+	fila := &fila{Mattoncini: make([]*mattoncino, 0), BordiSinistri: make(map[string]string), BordiDestri: make(map[string]string), SimboliMattoncini: make(map[string]byte)}
 	if len(nomi) == 1 {
 		mattoncino := g.Scatola.Mattoncini[nomi[0][1:]]
 		inserisciMattoncinoInFila(fila, mattoncino, nomi[0][0] == '+')
@@ -195,7 +204,7 @@ func disponiFila(g gioco, listaNomi string) {
 		if !compatibili(mattoncino1, mattoncino2, segno1, segno2) {
 			return
 		}
-		inserisciMattoncinoInFila(fila, mattoncino1, nomi[i][0] == '+')
+		inserisciMattoncinoInFila(fila, mattoncino1, (nomi[i][0] == '+'))
 	}
 	var m *mattoncino
 	if !mattonciniPresi[nomi[len(nomi)-1][1:]] {
@@ -203,7 +212,6 @@ func disponiFila(g gioco, listaNomi string) {
 		mattonciniPresi[m.Sigma] = true
 	}
 	inserisciMattoncinoInFila(fila, m, nomi[len(nomi)-1][0] == '+')
-
 	for mat := range mattonciniPresi {
 		delete(g.Scatola.Mattoncini, mat)
 	}
@@ -225,8 +233,12 @@ func stampaFila(g gioco, sigma string) {
 	for _, f := range *g.FileDisposte {
 		if contiene(f, sigma) {
 			fmt.Println("(")
-			for _, elem := range f.Mattoncini {
-				fmt.Printf("%s: %s, %s\n", elem.Sigma, elem.Alpha, elem.Beta)
+			for _, m := range f.Mattoncini {
+				if f.SimboliMattoncini[m.Sigma] == '+' {
+					fmt.Printf("%s: %s, %s\n", m.Sigma, m.Alpha, m.Beta)
+				} else {
+					fmt.Printf("%s: %s, %s\n", m.Sigma, m.Beta, m.Alpha)
+				}
 			}
 			fmt.Println(")")
 			return
@@ -280,8 +292,81 @@ Crea e posiziona sul tavolo da gioco una fila di lunghezza minima da α a β. Tu
 della fila devono essere presi dalla scatola. Se non `e possibile creare alcuna fila da α a β, stampa il
 messaggio: non esiste fila da α a β
 */
-func disponiFilaMinima() {
+func findShortestPath(mattoncini map[string]*mattoncino, current *mattoncino, beta string, visited map[string]bool, currentPath *fila, shortestPath *fila) {
+	if current.Beta == beta {
+		if len(shortestPath.Mattoncini) == 0 || len(currentPath.Mattoncini) < len(shortestPath.Mattoncini) {
+			shortestPath.Mattoncini = append([]*mattoncino{}, currentPath.Mattoncini...)
+		}
+		return
+	}
+	visited[current.Sigma] = true
+	checkMattoncini := make([]*mattoncino, 0)
+	checkSimboli := make([]byte, 0)
+	for _, m := range mattoncini {
+		if m.Alpha == current.Beta {
+			checkMattoncini = append(checkMattoncini, m)
+			checkSimboli = append(checkSimboli, '+')
+		} else if m.Beta == current.Beta {
+			checkMattoncini = append(checkMattoncini, m)
+			checkSimboli = append(checkSimboli, '-')
+		}
+	}
+	for _, nextMattoncino := range checkMattoncini {
+		if !visited[nextMattoncino.Sigma] && (current.Beta == nextMattoncino.Alpha || current.Beta == nextMattoncino.Beta) {
+			simbolo := byte('+')
+			if current.Beta == nextMattoncino.Beta {
+				simbolo = byte('-')
+			}
+			nextPath := &fila{
+				Mattoncini:        append([]*mattoncino{}, currentPath.Mattoncini...),
+				SimboliMattoncini: make(map[string]byte),
+			}
+			nextPath.SimboliMattoncini[nextMattoncino.Sigma] = simbolo
+			fmt.Println("CONTROLLO:", nextMattoncino)
+			findShortestPath(mattoncini, nextMattoncino, beta, visited, nextPath, shortestPath)
+		}
+	}
+	visited[current.Sigma] = false
+}
 
+func disponiFilaMinima(mattoncini map[string]*mattoncino, alpha, beta string) *fila {
+	startMattoncini := make([]*mattoncino, 0)
+	startSimboli := make([]byte, 0)
+	for _, m := range mattoncini {
+		if m.Alpha == alpha {
+			startMattoncini = append(startMattoncini, m)
+			startSimboli = append(startSimboli, '+')
+		} else if m.Beta == alpha {
+			startMattoncini = append(startMattoncini, m)
+			startSimboli = append(startSimboli, '-')
+		}
+	}
+	if len(startMattoncini) == 0 {
+		return nil
+	}
+
+	shortestPath := &fila{
+		Mattoncini:        make([]*mattoncino, 0),
+		SimboliMattoncini: make(map[string]byte),
+	}
+
+	visited := make(map[string]bool)
+	for i, m := range startMattoncini {
+		currentPath := &fila{
+			Mattoncini:        []*mattoncino{m},
+			SimboliMattoncini: make(map[string]byte),
+		}
+		currentPath.SimboliMattoncini[m.Sigma] = startSimboli[i]
+		fmt.Println("PARTO DA: ", m)
+		findShortestPath(mattoncini, m, beta, visited, currentPath, shortestPath)
+	}
+
+	fmt.Println("FILA MINIMA:")
+	for _, m := range shortestPath.Mattoncini {
+		fmt.Println(m.Sigma)
+	}
+
+	return shortestPath
 }
 
 /*
@@ -289,8 +374,9 @@ sottostringaMassima (σ, τ )
 Stampa su una nuova riga una sottostringa massima ρ di σ e τ (se ρ `e la stringa nulla, stampa una
 riga vuota).
 */
-func sottostringaMassima() {
-
+func sottostringaMassima(sigma, tau string) {
+	str := calcolaSottostringaMassimaComune(sigma, tau)
+	fmt.Println(str)
 }
 
 /*
@@ -341,8 +427,6 @@ func max(a, b int) int {
 func indiceCacofonia(g gioco, sigma string) {
 	for _, f := range *g.FileDisposte {
 		if contiene(f, sigma) {
-			fmt.Println(f)
-			fmt.Println(sigma)
 			cacofonia := 0
 			for i := 0; i < len(f.Mattoncini)-1; i++ {
 				mattoncino1 := f.Mattoncini[i]
